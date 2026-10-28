@@ -1,0 +1,53 @@
+snmp_exporter_repo: "github.com/prometheus/snmp_exporter"
+snmp_exporter_version: "0.29.0"
+snmp_exporter_port: 9116
+snmp_exporter_container_name: "snmp_exporter"
+snmp_exporter_docker_namespace: "{{ docker_namespace if docker_namespace else 'prom' }}"
+snmp_exporter_image: "{{ docker_registry ~ '/' if docker_registry else '' }}{{ snmp_exporter_docker_namespace }}/snmp-exporter:v{{ snmp_exporter_version }}"
+snmp_exporter_docker_log_driver: "{{ docker_log_driver }}"
+snmp_exporter_docker_log_opts: "{{ docker_log_opts }}"
+snmp_exporter_docker_memory_limit: "{{ docker_memory_limit }}"
+snmp_exporter_docker_memory_swap_limit: "{{ docker_memory_swap_limit }}"
+snmp_exporter_docker_cpus_limit: "{{ docker_cpus_limit }}"
+snmp_exporter_restart_policy: "unless-stopped"
+snmp_exporter_web_listen_address: "{{ api_interface_address }}:{{ snmp_exporter_port }}"
+snmp_exporter_config_dir: "{{ ansitheus_config_dir }}/snmp_exporter"
+snmp_exporter_config_file: "{{ snmp_exporter_config_dir }}/snmp.yml"
+snmp_exporter_custom_config_dir: "{{ ansitheus_custom_config_dir }}/snmp"
+snmp_exporter_env: "{{ docker_container_env }}"
+
+# Inline configuration fallback. A custom snmp.yaml/snmp.yml file takes
+# precedence over this value.
+snmp_exporter_config:
+  auths:
+    public_v2:
+      version: 2
+      community: public
+  modules:
+    if_mib:
+      walk:
+        - 1.3.6.1.2.1.1
+        - 1.3.6.1.2.1.2
+
+snmp_exporter_services:
+  snmp_exporter:
+    container_name: "{{ snmp_exporter_container_name }}"
+    group: "snmp_exporter"
+    enabled: "{{ enable_snmp_exporter }}"
+    image: "{{ snmp_exporter_image }}"
+    privileged: "no"
+    state: "started"
+    port: "{{ snmp_exporter_port }}"
+    volumes:
+      - "{{ snmp_exporter_config_dir }}:/etc/snmp_exporter:ro"
+    command: >
+      --config.file=/etc/snmp_exporter/snmp.yml
+      --web.listen-address={{ snmp_exporter_web_listen_address }}
+    restart_policy: "{{ snmp_exporter_restart_policy }}"
+    network_mode: "host"
+    log_driver: "{{ snmp_exporter_docker_log_driver }}"
+    log_options: "{{ snmp_exporter_docker_log_opts }}"
+    memory: "{{ snmp_exporter_docker_memory_limit }}"
+    memory_swap: "{{ snmp_exporter_docker_memory_swap_limit }}"
+    cpus: "{{ snmp_exporter_docker_cpus_limit }}"
+    env: "{{ snmp_exporter_env }}"

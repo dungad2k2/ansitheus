@@ -1,0 +1,19 @@
+---
+- name: Stop and remove snmp_exporter container
+  community.general.docker_container:
+    name: "{{ item.value.container_name }}"
+    state: absent
+  when:
+    - inventory_hostname in groups[item.value.group]
+    - item.value.enabled | bool
+  with_dict: "{{ snmp_exporter_services }}"
+
+- name: Remove snmp_exporter image
+  docker_image:
+    name: "{{ item.value.image }}"
+    state: absent
+  when:
+    - inventory_hostname in groups[item.value.group]
+    - item.value.enabled | bool
+    - destroy_include_images | bool
+  with_dict: "{{ snmp_exporter_services }}"

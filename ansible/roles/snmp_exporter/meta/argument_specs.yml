@@ -1,0 +1,22 @@
+---
+argument_specs:
+  main:
+    short_description: "Prometheus SNMP exporter"
+    options:
+      snmp_exporter_version:
+        description: "SNMP exporter image version"
+        default: "0.29.0"
+      snmp_exporter_port:
+        description: "Port on which snmp_exporter listens"
+        default: 9116
+      snmp_exporter_config_dir:
+        description: "Directory containing snmp.yml"
+        default: "/etc/ansitheus/snmp_exporter"
+      snmp_exporter_custom_config_dir:
+        description: "Directory containing the generated combined SNMP configuration"
+        default: "/etc/ansitheus/config/snmp"
+      snmp_exporter_config:
+        description:
+          - "Inline SNMP exporter configuration used when no custom file is found."
+          - "Must contain auths and modules sections."
+        type: "dict"

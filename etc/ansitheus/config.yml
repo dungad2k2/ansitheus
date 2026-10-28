@@ -41,6 +41,7 @@ enable_mysqld_exporter: "no"
 enable_fluentd: "no"
 enable_openstack_exporter: "no"
 enable_nginx_exporter: "no"
+enable_snmp_exporter: "no"
 
 ##################
 # Prometheus options
@@ -60,6 +61,7 @@ cadvisor_port: "8080"
 grafana_port: "3000"
 mysqld_exporter_port: "9104"
 nginx_exporter_port: "9113"
+snmp_exporter_port: "9116"
 
 ###############
 # Image version
@@ -74,3 +76,4 @@ haproxy_version: "lts-alpine"
 mysqld_exporter_version: "0.20.0"
 fluentd_version: "1.19.4"
 nginx_exporter_version: "1.5.3"
+snmp_exporter_version: "0.29.0"

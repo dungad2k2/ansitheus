@@ -1,0 +1,19 @@
+---
+- name: Restart snmp_exporter container
+  vars:
+    service: "{{ snmp_exporter_services['snmp_exporter'] }}"
+  community.general.docker_container:
+    name: "{{ service.container_name }}"
+    image: "{{ service.image }}"
+    volumes: "{{ service.volumes }}"
+    command: "{{ service.command }}"
+    state: "{{ service.state }}"
+    restart: true
+    restart_policy: "{{ service.restart_policy }}"
+    privileged: "{{ service.privileged }}"
+    network_mode: "{{ service.network_mode }}"
+    log_driver: "{{ service.log_driver }}"
+    log_options: "{{ service.log_options }}"
+  when:
+    - inventory_hostname in groups[service.group]
+    - service.enabled | bool

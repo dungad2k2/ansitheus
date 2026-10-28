@@ -1,5 +1,8 @@
 FROM willhallonline/ansible:2.17-ubuntu-24.04
 LABEL maintainer="Kien Nguyen-Tuan <kiennt2609@gmail.com>"
+# The base image runs as the non-root `ansible` user by default. Ansitheus
+# installs system packages and runs Ansible with become/root privileges.
+USER root
 # Enable Mitogen to boostup performance
 ENV ANSIBLE_STRATEGY_PLUGINS=/usr/local/lib/python3.12/dist-packages/ansible_mitogen/plugins/strategy
 ENV ANSIBLE_STRATEGY=mitogen_linear

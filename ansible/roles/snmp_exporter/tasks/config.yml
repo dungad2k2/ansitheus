@@ -1,0 +1,107 @@
+---
+- name: Ensure snmp_exporter config directory exists
+  ansible.builtin.file:
+    path: "{{ snmp_exporter_config_dir }}"
+    state: directory
+    owner: "{{ config_owner_user }}"
+    group: "{{ config_owner_group }}"
+    mode: "0755"
+
+- name: Check for a combined snmp_exporter configuration
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  delegate_to: localhost
+  register: snmp_exporter_combined_config_checks
+  loop:
+    - "{{ snmp_exporter_custom_config_dir }}/snmp.yaml"
+    - "{{ snmp_exporter_custom_config_dir }}/snmp.yml"
+    - "{{ ansitheus_custom_config_dir }}/snmp_exporter/snmp.yaml"
+    - "{{ ansitheus_custom_config_dir }}/snmp_exporter/snmp.yml"
+
+- name: Select the combined snmp_exporter configuration
+  ansible.builtin.set_fact:
+    snmp_exporter_combined_config_path: "{{ item.item }}"
+  when:
+    - item.stat.exists
+    - snmp_exporter_combined_config_path is not defined
+  loop: "{{ snmp_exporter_combined_config_checks.results }}"
+
+- name: Find split snmp_exporter configuration files
+  ansible.builtin.set_fact:
+    snmp_exporter_split_config_files: >-
+      {{ (query('ansible.builtin.fileglob', snmp_exporter_custom_config_dir ~ '/*.yaml')
+          + query('ansible.builtin.fileglob', snmp_exporter_custom_config_dir ~ '/*.yml')) | sort }}
+  when: snmp_exporter_combined_config_path is not defined
+
+- name: Initialize merged snmp_exporter configuration
+  ansible.builtin.set_fact:
+    snmp_exporter_merged_config: {}
+  when: snmp_exporter_combined_config_path is not defined
+
+- name: Merge split snmp_exporter configuration files
+  ansible.builtin.set_fact:
+    snmp_exporter_merged_config: >-
+      {{ snmp_exporter_merged_config | combine(
+           lookup('ansible.builtin.file', item) | from_yaml,
+           recursive=True
+         ) }}
+  loop: "{{ snmp_exporter_split_config_files | default([]) }}"
+  when: snmp_exporter_combined_config_path is not defined
+
+- name: Install combined snmp_exporter configuration
+  ansible.builtin.template:
+    src: "{{ snmp_exporter_combined_config_path }}"
+    dest: "{{ snmp_exporter_config_file }}"
+    owner: "{{ config_owner_user }}"
+    group: "{{ config_owner_group }}"
+    mode: "0640"
+  when: snmp_exporter_combined_config_path is defined
+  register: snmp_exporter_combined_config
+  notify: Restart snmp_exporter container
+
+- name: Install merged split snmp_exporter configuration
+  ansible.builtin.copy:
+    content: "{{ snmp_exporter_merged_config | to_nice_yaml(indent=2, sort_keys=False) }}"
+    dest: "{{ snmp_exporter_config_file }}"
+    owner: "{{ config_owner_user }}"
+    group: "{{ config_owner_group }}"
+    mode: "0640"
+  when:
+    - snmp_exporter_combined_config_path is not defined
+    - snmp_exporter_split_config_files | default([]) | length > 0
+  register: snmp_exporter_merged_config_result
+  notify: Restart snmp_exporter container
+
+- name: Install inline snmp_exporter configuration
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/snmp.yml.j2"
+    dest: "{{ snmp_exporter_config_file }}"
+    owner: "{{ config_owner_user }}"
+    group: "{{ config_owner_group }}"
+    mode: "0640"
+  when:
+    - snmp_exporter_combined_config_path is not defined
+    - snmp_exporter_split_config_files | default([]) | length == 0
+  register: snmp_exporter_inline_config
+  notify: Restart snmp_exporter container
+
+- name: Ensure snmp_exporter container is running
+  community.general.docker_container:
+    name: "{{ item.value.container_name }}"
+    image: "{{ item.value.image }}"
+    volumes: "{{ item.value.volumes }}"
+    command: "{{ item.value.command }}"
+    state: "{{ item.value.state }}"
+    restart_policy: "{{ item.value.restart_policy }}"
+    privileged: "{{ item.value.privileged }}"
+    network_mode: "{{ item.value.network_mode }}"
+    log_driver: "{{ item.value.log_driver }}"
+    log_options: "{{ item.value.log_options }}"
+    memory: "{{ item.value.memory }}"
+    memory_swap: "{{ item.value.memory_swap }}"
+    cpus: "{{ item.value.cpus }}"
+    env: "{{ item.value.env }}"
+  when:
+    - inventory_hostname in groups[item.value.group]
+    - item.value.enabled | bool
+  with_dict: "{{ snmp_exporter_services }}"

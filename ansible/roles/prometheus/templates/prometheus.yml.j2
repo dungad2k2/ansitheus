@@ -93,6 +93,34 @@ scrape_configs:
 {% endfor %}
 {% endif %}
 
+{% set snmp_file_sd = [] %}
+{% if prometheus_file_sd is defined and prometheus_file_sd.files | length > 0 %}
+{% for f in prometheus_file_sd.files %}
+{% if f.path | basename | regex_search('^snmp([_.-].*)?\\.(json|ya?ml)$') %}
+{% set _ = snmp_file_sd.append(f) %}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if enable_snmp_exporter | bool and snmp_file_sd | length > 0 %}
+  - job_name: snmp
+    metrics_path: /snmp
+    file_sd_configs:
+{% for f in snmp_file_sd %}
+      - files:
+        - "/etc/prometheus/file_sd/{{ f.path | basename }}"
+{% endfor %}
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [module]
+        target_label: __param_module
+      - source_labels: [auth]
+        target_label: __param_auth
+      - target_label: __address__
+        replacement: '{{ hostvars[groups["snmp_exporter"][0]]["ansible_" + hostvars[groups["snmp_exporter"][0]]["api_interface"]]["ipv4"]["address"] }}:{{ snmp_exporter_port }}'
+{% endif %}
+
 {% if enable_cadvisor | bool %}
   - job_name: cadvisor
     static_configs:
@@ -104,11 +132,13 @@ scrape_configs:
 
 {% if prometheus_file_sd is defined and prometheus_file_sd.files | length > 0 %}
 {% for f in prometheus_file_sd.files %}
+{% if not (f.path | basename | regex_search('^snmp([_.-].*)?\\.(json|ya?ml)$')) %}
   - job_name: {{ f.path | basename | regex_replace('.json', '') }}-file-sd
     scrape_interval: 180s
     scrape_timeout: 150s
     file_sd_configs:
       - files:
         - "/etc/prometheus/file_sd/{{ f.path | basename }}"
+{% endif %}
 {% endfor %}
 {% endif %}

@@ -97,6 +97,18 @@
         when: enable_nginx_exporter | bool,
       }
 
+- name: Apply role snmp_exporter
+  gather_facts: false
+  become: true
+  hosts:
+    - snmp_exporter
+  roles:
+    - {
+        role: snmp_exporter,
+        tags: [exporters, snmp_exporter],
+        when: enable_snmp_exporter | bool,
+      }
+
 - name: Apply role grafana
   gather_facts: false
   become: true

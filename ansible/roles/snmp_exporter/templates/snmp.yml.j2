@@ -1,0 +1,3 @@
+# Inline configuration fallback. A custom snmp.yaml/snmp.yml file takes
+# precedence over this template.
+{{ snmp_exporter_config | to_nice_yaml(indent=2, sort_keys=False) }}
